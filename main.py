@@ -125,11 +125,115 @@ st.text_input(
 st.divider()
 
 # ==============================================================
+# [구역 2] 관객수 합계 상위 5편 - 날짜별 일관객 비교
+# ==============================================================
+st.header("2️⃣ 관객수 합계 상위 5편, 날짜별 일관객 비교")
+
+# 영화별로 일관객을 모두 더해서, 이 기간 누적 합계가 가장 큰 5편을 뽑습니다.
+# (누적관객 컬럼은 KOBIS 기준 개봉일부터의 누적치라 기간을 벗어난 값이 섞일 수 있어,
+#  대신 이 데이터 안에서 직접 합산한 값을 사용합니다.)
+top5_movies = (
+    df.groupby("영화명")["일관객"].sum().sort_values(ascending=False).head(5).index.tolist()
+)
+
+top5_df = df[df["영화명"].isin(top5_movies)].sort_values("날짜")
+
+if top5_df.empty:
+    st.warning("비교할 데이터가 없습니다.")
+else:
+    fig2 = px.line(
+        top5_df,
+        x="날짜",
+        y="일관객",
+        color="영화명",  # 영화별로 다른 색깔의 선을 그려줍니다.
+        markers=True,
+        title="일관객 합계 상위 5편의 날짜별 일일 관객수",
+        labels={"날짜": "날짜", "일관객": "일일 관객수(명)", "영화명": "영화명"},
+    )
+    fig2.update_traces(
+        hovertemplate="날짜: %{x|%Y-%m-%d}<br>관객수: %{y:,}명<extra>%{fullData.name}</extra>"
+    )
+    fig2.update_layout(hovermode="x unified")
+    # 범례(legend)의 영화 이름을 클릭하면 그 선을 켜고 끌 수 있습니다. (Plotly 기본 기능)
+
+    st.plotly_chart(fig2, use_container_width=True)
+
+st.text_input(
+    "💡 이 그래프로 알 수 있는 것",
+    value="",
+    placeholder="예: 최상위권 영화들은 각자 다른 시기에 관객수가 크게 튀어 오르는 구간이 있다.",
+    key="section2_insight",
+)
+
+st.divider()
+
+# ==============================================================
+# [구역 3] 날짜별 10위권 일관객 합계
+# ==============================================================
+st.header("3️⃣ 날짜별 10위권 일관객 합계")
+
+# 날짜별로 그날 10위권에 든 영화들의 일관객을 모두 더합니다.
+daily_sum = df.groupby("날짜", as_index=False)["일관객"].sum()
+daily_sum = daily_sum.rename(columns={"일관객": "일관객합계"})
+daily_sum = daily_sum.sort_values("날짜")
+
+if daily_sum.empty:
+    st.warning("표시할 데이터가 없습니다.")
+else:
+    fig3 = px.area(
+        daily_sum,
+        x="날짜",
+        y="일관객합계",
+        title="날짜별 10위권 일관객 합계",
+        labels={"날짜": "날짜", "일관객합계": "10위권 일관객 합계(명)"},
+    )
+    fig3.update_traces(
+        hovertemplate="날짜: %{x|%Y-%m-%d}<br>합계: %{y:,}명<extra></extra>"
+    )
+
+    # 합계가 가장 컸던 날 3일을 찾습니다.
+    top3_days = daily_sum.sort_values("일관객합계", ascending=False).head(3)
+
+    # 상위 3일을 그래프 위에 빨간 점으로 표시합니다.
+    fig3.add_scatter(
+        x=top3_days["날짜"],
+        y=top3_days["일관객합계"],
+        mode="markers",
+        marker=dict(size=12, color="red", symbol="circle"),
+        name="합계 상위 3일",
+        hovertemplate="날짜: %{x|%Y-%m-%d}<br>합계: %{y:,}명<extra>합계 상위 3일</extra>",
+    )
+
+    # 각 점 위에 날짜를 글자로 적어줍니다.
+    for _, row in top3_days.iterrows():
+        fig3.add_annotation(
+            x=row["날짜"],
+            y=row["일관객합계"],
+            text=row["날짜"].strftime("%Y-%m-%d"),
+            showarrow=True,
+            arrowhead=2,
+            ax=0,
+            ay=-40,
+            font=dict(color="red", size=12),
+        )
+
+    st.plotly_chart(fig3, use_container_width=True)
+
+st.text_input(
+    "💡 이 그래프로 알 수 있는 것",
+    value="",
+    placeholder="예: 특정 명절이나 신작 개봉 시기에 전체 관객수가 크게 튀어 오른다.",
+    key="section3_insight",
+)
+
+st.divider()
+
+# ==============================================================
 # ▶▶▶ 여기부터 새 구역을 추가하세요 ◀◀◀
 # 다음 그래프를 만들 때는 아래 형식을 그대로 복사해서 쓰면 됩니다.
 #
-# st.header("2️⃣ (새 그래프 제목)")
+# st.header("4️⃣ (새 그래프 제목)")
 # ... 그래프를 그리는 코드 ...
-# st.text_input("💡 이 그래프로 알 수 있는 것", value="", placeholder="...", key="section2_insight")
+# st.text_input("💡 이 그래프로 알 수 있는 것", value="", placeholder="...", key="section4_insight")
 # st.divider()
 # ==============================================================
